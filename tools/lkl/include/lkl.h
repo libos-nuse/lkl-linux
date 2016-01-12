@@ -195,7 +195,10 @@ int lkl_set_ipv4_gateway(unsigned int addr);
  */
 union lkl_netdev {
 	int fd;
+	void *dpdk;
 };
+
+struct lkl_dev_net_ops;
 
 /**
  * lkl_netdev_add - add a new network device
@@ -203,11 +206,12 @@ union lkl_netdev {
  * Must be called before calling lkl_start_kernel.
  *
  * @nd - the network device host handle
+ * @ops - the network device ops
  * @mac - optional MAC address for the device
  * @returns a network device id (0 is valid) or a strictly negative value in
  * case of error
  */
-int lkl_netdev_add(union lkl_netdev nd, void *mac);
+int lkl_netdev_add(union lkl_netdev nd, struct lkl_dev_net_ops *ops, void *mac);
 
 /**
  * lkl_netdev_get_ifindex - retrieve the interface index for a given network

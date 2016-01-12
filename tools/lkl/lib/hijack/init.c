@@ -30,48 +30,42 @@
 
 #include "xlate.h"
 
+union lkl_netdev nuse_vif_tap_create(const char *ifname);
+union lkl_netdev nuse_vif_dpdk_create(const char *ifname);
+extern struct lkl_dev_net_ops tap_net_ops;
+extern struct lkl_dev_net_ops dpdk_net_ops;
+
 void __attribute__((constructor(102)))
 hijack_init(void)
 {
 	int ret, i, dev_null, nd_id = -1, nd_ifindex = -1;
-	char *tap = getenv("LKL_HIJACK_NET_TAP");
+	char *vif = getenv("LKL_HIJACK_NET_VIF");
+	char *ifname = getenv("LKL_HIJACK_NET_IFNAME");
 	char *ip = getenv("LKL_HIJACK_NET_IP");
 	char *netmask_len = getenv("LKL_HIJACK_NET_NETMASK_LEN");
 	char *gateway = getenv("LKL_HIJACK_NET_GATEWAY");
 	char *debug = getenv("LKL_HIJACK_DEBUG");
+	union lkl_netdev nd;
+	struct lkl_dev_net_ops *ops = NULL;
 
-	if (tap) {
-		struct ifreq ifr = {
-			.ifr_flags = IFF_TAP | IFF_NO_PI,
-		};
-		union lkl_netdev nd;
+	if (vif && (strcmp(vif, "tap") == 0)) {
+		nd = nuse_vif_tap_create(ifname);
+		ops = &tap_net_ops;
+	}
+	else if (vif && (strcmp(vif, "dpdk") == 0)) {
+		nd = nuse_vif_dpdk_create(ifname);
+		ops = &dpdk_net_ops;
+	}
 
-		strncpy(ifr.ifr_name, tap, IFNAMSIZ);
-
-		nd.fd = open("/dev/net/tun", O_RDWR|O_NONBLOCK);
-		if (nd.fd < 0) {
-			fprintf(stderr, "failed to open tap: %s\n", strerror(errno));
-			goto no_tap;
-		}
-
-		ret = ioctl(nd.fd, TUNSETIFF, &ifr);
-		if (ret < 0) {
-			fprintf(stderr, "failed to attach to %s: %s\n",
-				ifr.ifr_name, strerror(errno));
-			goto no_tap;
-		}
-
-		ret = lkl_netdev_add(nd, NULL);
+	if (ops) {
+		ret = lkl_netdev_add(nd, ops, NULL);
 		if (ret < 0) {
 			fprintf(stderr, "failed to add netdev: %s\n",
 				lkl_strerror(ret));
-			goto no_tap;
 		}
-
 		nd_id = ret;
 	}
 
-no_tap:
 	if (!debug)
 		lkl_host_ops.print = NULL;
 

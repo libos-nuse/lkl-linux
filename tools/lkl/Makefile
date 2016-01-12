@@ -1,6 +1,19 @@
 CFLAGS := -Iinclude -Wall -g -O2 -Wextra -Wno-unused-parameter \
 	  -Wno-missing-field-initializers -fno-strict-aliasing
 
+RTE_SDK="/usr/lib64/dpdk-2.0.0-sdk"
+RTE_TARGET="x86_64-native-linuxapp-gcc"
+RTE_INCLUDE="/usr/include/dpdk-2.0.0"
+
+DPDK_CFLAGS = -I$(RTE_INCLUDE)
+CFLAGS += $(DPDK_CFLAGS)
+DPDK_LDLIBS = -L$(RTE_SDK)/$(RTE_TARGET)/lib -Wl,-rpath=$(RTE_SDK)/$(RTE_TARGET)/lib
+DPDK_LDLIBS += -lrte_pmd_virtio_uio -lrte_pmd_vmxnet3_uio \
+         -lrte_timer -lrte_hash \
+          -lrte_mbuf -lethdev \
+          -lrte_eal -lrte_mempool -lrte_ring -lrte_pmd_ring -lrte_malloc
+# -lrte_pmd_ixgbe -lrte_pmd_e1000
+
 ifdef CROSS_COMPILE
 CC=$(CROSS_COMPILE)gcc
 AR=$(CROSS_COMPILE)ar
@@ -61,7 +74,7 @@ lib/liblkl_hijack.so: $(hijack_objs) lib/liblkl.a
 # order of -lxxx again really matters for LD_PRELOAD
 lib/liblkl-hijack.so: $(hijack_objs) Makefile lib/liblkl.so
 	$(CC) -shared -nodefaultlibs $(lib_objs) -Llib -llkl $(hijack_objs) \
-	-ldl -lpthread -lrt -o $@
+	-ldl -lpthread -lrt $(DPDK_LDLIBS) -o $@
 
 lib/lkl.o:
 	$(MAKE) -C ../.. ARCH=lkl defconfig
