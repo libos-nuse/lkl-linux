@@ -338,7 +338,7 @@ out:
 
 static int netdev_id = -1;
 struct lkl_netdev_tap {
-    int fd;
+	int fd;
 } netdev = { -1, };
 extern struct lkl_dev_net_ops tap_net_ops;
 

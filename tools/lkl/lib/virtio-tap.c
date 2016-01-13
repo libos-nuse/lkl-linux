@@ -18,16 +18,16 @@
 #include <lkl_host.h>
 
 struct lkl_netdev_tap {
-    int fd;
+	int fd;
 };
 
 
 static int net_tx(struct lkl_netdev *nd, void *data, int len)
 {
 	int ret;
-    struct lkl_netdev_tap *nd_tap;
+	struct lkl_netdev_tap *nd_tap;
 
-    nd_tap = (struct lkl_netdev_tap *)nd;
+	nd_tap = (struct lkl_netdev_tap *) nd;
 
 	ret = write(nd_tap->fd, data, len);
 	if (ret <= 0 && errno == -EAGAIN)
@@ -38,9 +38,9 @@ static int net_tx(struct lkl_netdev *nd, void *data, int len)
 static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 {
 	int ret;
-    struct lkl_netdev_tap *nd_tap;
+	struct lkl_netdev_tap *nd_tap;
 
-    nd_tap = (struct lkl_netdev_tap *)nd;
+	nd_tap = (struct lkl_netdev_tap *) nd;
 
 	ret = read(nd_tap->fd, data, *len);
 	if (ret <= 0)
@@ -51,9 +51,9 @@ static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 
 static int net_poll(struct lkl_netdev *nd, int events)
 {
-    struct lkl_netdev_tap *nd_tap;
+	struct lkl_netdev_tap *nd_tap;
 
-    nd_tap = (struct lkl_netdev_tap *)nd;
+	nd_tap = (struct lkl_netdev_tap *) nd;
 
 	struct pollfd pfd = {
 		.fd = nd_tap->fd,
@@ -92,9 +92,9 @@ struct lkl_netdev *nuse_vif_tap_create(const char *ifname)
 
 	nd = (struct lkl_netdev_tap *)malloc(sizeof(struct lkl_netdev_tap));
 	if (!nd) {
-        fprintf(stderr, "failed to allocate memory\n");
-        // TODO: propagate the error state, maybe use errno for that?
-        return 0;
+		fprintf(stderr, "failed to allocate memory\n");
+		/* TODO: propagate the error state, maybe use errno for that? */
+		return 0;
 	}
 
 	struct ifreq ifr = {

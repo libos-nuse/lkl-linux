@@ -66,22 +66,22 @@ static const struct rte_eth_txconf txconf = {
 static int portid;
 
 struct lkl_netdev_dpdk {
-    int portid;
-    struct rte_mempool *rxpool, *txpool;    /* rin buffer pool */
-    char txpoolname[16], rxpoolname[16];
-    /* burst receive context by rump dpdk code */
-    struct rte_mbuf *rms[MAX_PKT_BURST];
-    int npkts;
-    int bufidx;
+	int portid;
+	struct rte_mempool *rxpool, *txpool; /* rin buffer pool */
+	char txpoolname[16], rxpoolname[16];
+	/* burst receive context by rump dpdk code */
+	struct rte_mbuf *rms[MAX_PKT_BURST];
+	int npkts;
+	int bufidx;
 };
 
 static int net_tx(struct lkl_netdev *nd, void *data, int len)
 {
 	void *pkt;
 	struct rte_mbuf *rm;
-    struct lkl_netdev_dpdk *nd_dpdk;
+	struct lkl_netdev_dpdk *nd_dpdk;
 
-    nd_dpdk = (struct lkl_netdev_dpdk *)nd;
+	nd_dpdk = (struct lkl_netdev_dpdk *) nd;
 
 	rm = rte_pktmbuf_alloc(nd_dpdk->txpool);
 	pkt = rte_pktmbuf_append(rm, len);
@@ -93,9 +93,9 @@ static int net_tx(struct lkl_netdev *nd, void *data, int len)
 
 static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 {
-    struct lkl_netdev_dpdk *nd_dpdk;
+	struct lkl_netdev_dpdk *nd_dpdk;
 
-    nd_dpdk = (struct lkl_netdev_dpdk *)nd;
+	nd_dpdk = (struct lkl_netdev_dpdk *) nd;
 
 	while (nd_dpdk->npkts > 0) {
 		struct rte_mbuf *rm, *rm0;
@@ -115,8 +115,8 @@ static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 	}
 
 	if (nd_dpdk->npkts == 0) {
-		nd_dpdk->npkts = rte_eth_rx_burst(nd_dpdk->portid, 0, nd_dpdk->rms,
-					       MAX_PKT_BURST);
+		nd_dpdk->npkts = rte_eth_rx_burst(nd_dpdk->portid, 0,
+						  nd_dpdk->rms, MAX_PKT_BURST);
 		nd_dpdk->bufidx = 0;
 	}
 
@@ -147,7 +147,7 @@ struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 	static int dpdk_init = 0;
 	struct rte_eth_conf portconf;
 	struct rte_eth_link link;
-    struct lkl_netdev_dpdk *nd;
+	struct lkl_netdev_dpdk *nd;
 
 	if (!dpdk_init) {
 		ret = rte_eal_init(sizeof(ealargs) / sizeof(ealargs[0]),
@@ -164,7 +164,7 @@ struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 		dpdk_init = 1;
 	}
 
-    nd = malloc(sizeof(struct lkl_netdev_dpdk));
+	nd = malloc(sizeof(struct lkl_netdev_dpdk));
 	nd->portid = portid++;
 	snprintf(nd->txpoolname, 16, "%s%s", "tx", ifname);
 	snprintf(nd->rxpoolname, 16, "%s%s", "rx", ifname);
@@ -218,5 +218,5 @@ struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 	/* should be promisc ? */
 	rte_eth_promiscuous_enable(nd->portid);
 
-    return (struct lkl_netdev *)nd;
+	return (struct lkl_netdev *) nd;
 }
