@@ -64,46 +64,47 @@ static const struct rte_eth_txconf txconf = {
 #define NUMQUEUE        1
 
 static int portid;
-struct nuse_vif_dpdk {
-	int portid;
-	struct rte_mempool *rxpool, *txpool;    /* rin buffer pool */
-	char txpoolname[16], rxpoolname[16];
-	/* burst receive context by rump dpdk code */
-	struct rte_mbuf *rms[MAX_PKT_BURST];
-	int npkts;
-	int bufidx;
-};
 
 struct lkl_netdev_dpdk {
-    struct nuse_vif_dpdk dpdk;
+    int portid;
+    struct rte_mempool *rxpool, *txpool;    /* rin buffer pool */
+    char txpoolname[16], rxpoolname[16];
+    /* burst receive context by rump dpdk code */
+    struct rte_mbuf *rms[MAX_PKT_BURST];
+    int npkts;
+    int bufidx;
 };
 
 static int net_tx(struct lkl_netdev *nd, void *data, int len)
 {
 	void *pkt;
 	struct rte_mbuf *rm;
-	struct nuse_vif_dpdk *dpdk = &((struct lkl_netdev_dpdk *)nd)->dpdk;
+    struct lkl_netdev_dpdk *nd_dpdk;
 
-	rm = rte_pktmbuf_alloc(dpdk->txpool);
+    nd_dpdk = (struct lkl_netdev_dpdk *)nd;
+
+	rm = rte_pktmbuf_alloc(nd_dpdk->txpool);
 	pkt = rte_pktmbuf_append(rm, len);
 	memcpy(pkt, data, len);
 
-	rte_eth_tx_burst(dpdk->portid, 0, &rm, 1);
+	rte_eth_tx_burst(nd_dpdk->portid, 0, &rm, 1);
 	/* XXX: should be bursted !! */
 }
 
 static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 {
-    struct nuse_vif_dpdk *dpdk = &((struct lkl_netdev_dpdk *)nd)->dpdk;
+    struct lkl_netdev_dpdk *nd_dpdk;
 
-	while (dpdk->npkts > 0) {
+    nd_dpdk = (struct lkl_netdev_dpdk *)nd;
+
+	while (nd_dpdk->npkts > 0) {
 		struct rte_mbuf *rm, *rm0;
 		void *r_data;
 		uint32_t r_size;
 
-		rm0 = dpdk->rms[dpdk->bufidx];
-		dpdk->npkts--;
-		dpdk->bufidx++;
+		rm0 = nd_dpdk->rms[nd_dpdk->bufidx];
+		nd_dpdk->npkts--;
+		nd_dpdk->bufidx++;
 
 		for (rm = rm0; rm; rm = rm->next) {
 			r_data = rte_pktmbuf_mtod(rm, void *);
@@ -113,10 +114,10 @@ static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 		}
 	}
 
-	if (dpdk->npkts == 0) {
-		dpdk->npkts = rte_eth_rx_burst(dpdk->portid, 0, dpdk->rms,
+	if (nd_dpdk->npkts == 0) {
+		nd_dpdk->npkts = rte_eth_rx_burst(nd_dpdk->portid, 0, nd_dpdk->rms,
 					       MAX_PKT_BURST);
-		dpdk->bufidx = 0;
+		nd_dpdk->bufidx = 0;
 	}
 
 	return 0;
@@ -142,12 +143,11 @@ struct lkl_dev_net_ops dpdk_net_ops = {
 
 struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 {
-    struct lkl_netdev_dpdk *nd;
 	int ret = 0;
 	static int dpdk_init = 0;
 	struct rte_eth_conf portconf;
 	struct rte_eth_link link;
-	struct nuse_vif_dpdk *dpdk;
+    struct lkl_netdev_dpdk *nd;
 
 	if (!dpdk_init) {
 		ret = rte_eal_init(sizeof(ealargs) / sizeof(ealargs[0]),
@@ -165,59 +165,58 @@ struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 	}
 
     nd = malloc(sizeof(struct lkl_netdev_dpdk));
-	dpdk = &nd->dpdk;
-	dpdk->portid = portid++;
-	snprintf(dpdk->txpoolname, 16, "%s%s", "tx", ifname);
-	snprintf(dpdk->rxpoolname, 16, "%s%s", "rx", ifname);
+	nd->portid = portid++;
+	snprintf(nd->txpoolname, 16, "%s%s", "tx", ifname);
+	snprintf(nd->rxpoolname, 16, "%s%s", "rx", ifname);
 
-	dpdk->txpool =
-		rte_mempool_create(dpdk->txpoolname,
+	nd->txpool =
+		rte_mempool_create(nd->txpoolname,
 				   MBUF_NUM, MBUF_SIZ, MEMPOOL_CACHE_SZ,
 				   sizeof(struct rte_pktmbuf_pool_private),
 				   rte_pktmbuf_pool_init, NULL,
 				   rte_pktmbuf_init, NULL, 0, 0);
 
-	if (dpdk->txpool == NULL)
+	if (nd->txpool == NULL)
 		fprintf(stderr, "failed to allocate tx pool\n");
 
 
-	dpdk->rxpool =
-		rte_mempool_create(dpdk->rxpoolname, MBUF_NUM, MBUF_SIZ, 0,
+	nd->rxpool =
+		rte_mempool_create(nd->rxpoolname, MBUF_NUM, MBUF_SIZ, 0,
 				   sizeof(struct rte_pktmbuf_pool_private),
 				   rte_pktmbuf_pool_init, NULL,
 				   rte_pktmbuf_init, NULL, 0, 0);
 
-	if (dpdk->rxpool == NULL)
+	if (nd->rxpool == NULL)
 		fprintf(stderr, "failed to allocate rx pool\n");
 
 
 	memset(&portconf, 0, sizeof(portconf));
-	ret = rte_eth_dev_configure(dpdk->portid, NUMQUEUE, NUMQUEUE,
+	ret = rte_eth_dev_configure(nd->portid, NUMQUEUE, NUMQUEUE,
 				    &portconf);
 	if (ret < 0)
 		fprintf(stderr, "failed to configure port\n");
 
 
-	ret = rte_eth_rx_queue_setup(dpdk->portid, 0, NUMDESC, 0, &rxconf,
-				     dpdk->rxpool);
+	ret = rte_eth_rx_queue_setup(nd->portid, 0, NUMDESC, 0, &rxconf,
+				     nd->rxpool);
 
 	if (ret < 0)
 		fprintf(stderr, "failed to setup rx queue\n");
 
-	ret = rte_eth_tx_queue_setup(dpdk->portid, 0, NUMDESC, 0, &txconf);
+	ret = rte_eth_tx_queue_setup(nd->portid, 0, NUMDESC, 0, &txconf);
 	if (ret < 0)
 		fprintf(stderr, "failed to setup tx queue\n");
 
-	ret = rte_eth_dev_start(dpdk->portid);
+	ret = rte_eth_dev_start(nd->portid);
 	if (ret < 0)
 		fprintf(stderr, "failed to start device\n");
 
-	rte_eth_link_get(dpdk->portid, &link);
+	rte_eth_link_get(nd->portid, &link);
 	if (!link.link_status)
 		printf("interface state is down\n");
 
 	/* should be promisc ? */
-	rte_eth_promiscuous_enable(dpdk->portid);
+	rte_eth_promiscuous_enable(nd->portid);
 
     return (struct lkl_netdev *)nd;
 }
