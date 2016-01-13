@@ -337,7 +337,9 @@ out:
 }
 
 static int netdev_id = -1;
-union lkl_netdev netdev = { -1, };
+struct lkl_netdev_tap {
+    int fd;
+} netdev = { -1, };
 extern struct lkl_dev_net_ops tap_net_ops;
 
 #ifndef __MINGW32__
@@ -360,7 +362,7 @@ int test_netdev_add(char *str, int len)
 	if (ret < 0)
 		goto out;
 
-	ret = lkl_netdev_add(netdev, &tap_net_ops, NULL);
+	ret = lkl_netdev_add((struct lkl_netdev *)&netdev, &tap_net_ops, NULL);
 	if (ret < 0)
 		goto out;
 

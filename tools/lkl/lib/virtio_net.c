@@ -13,7 +13,7 @@ struct virtio_net_dev {
 	struct virtio_dev dev;
 	struct lkl_virtio_net_config config;
 	struct lkl_dev_net_ops *ops;
-	union lkl_netdev nd;
+	struct lkl_netdev *nd;
 	struct virtio_net_poll rx_poll, tx_poll;
 };
 
@@ -81,7 +81,7 @@ void poll_thread(void *arg)
 	}
 }
 
-int lkl_netdev_add(union lkl_netdev nd, struct lkl_dev_net_ops *ops, void *mac)
+int lkl_netdev_add(struct lkl_netdev *nd, struct lkl_dev_net_ops *ops, void *mac)
 {
 	struct virtio_net_dev *dev;
 	static int count;

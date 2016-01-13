@@ -30,8 +30,8 @@
 
 #include "xlate.h"
 
-union lkl_netdev nuse_vif_tap_create(const char *ifname);
-union lkl_netdev nuse_vif_dpdk_create(const char *ifname);
+struct lkl_netdev *nuse_vif_tap_create(const char *ifname);
+struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname);
 extern struct lkl_dev_net_ops tap_net_ops;
 extern struct lkl_dev_net_ops dpdk_net_ops;
 
@@ -45,7 +45,7 @@ hijack_init(void)
 	char *netmask_len = getenv("LKL_HIJACK_NET_NETMASK_LEN");
 	char *gateway = getenv("LKL_HIJACK_NET_GATEWAY");
 	char *debug = getenv("LKL_HIJACK_DEBUG");
-	union lkl_netdev nd;
+	struct lkl_netdev *nd;
 	struct lkl_dev_net_ops *ops = NULL;
 
 	if (vif && (strcmp(vif, "tap") == 0)) {

@@ -17,32 +17,46 @@
 #undef st_ctime
 #include <lkl_host.h>
 
+struct lkl_netdev_tap {
+    int fd;
+};
 
-static int net_tx(union lkl_netdev nd, void *data, int len)
+
+static int net_tx(struct lkl_netdev *nd, void *data, int len)
 {
 	int ret;
+    struct lkl_netdev_tap *nd_tap;
 
-	ret = write(nd.fd, data, len);
+    nd_tap = (struct lkl_netdev_tap *)nd;
+
+	ret = write(nd_tap->fd, data, len);
 	if (ret <= 0 && errno == -EAGAIN)
 		return -1;
 	return 0;
 }
 
-static int net_rx(union lkl_netdev nd, void *data, int *len)
+static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 {
 	int ret;
+    struct lkl_netdev_tap *nd_tap;
 
-	ret = read(nd.fd, data, *len);
+    nd_tap = (struct lkl_netdev_tap *)nd;
+
+	ret = read(nd_tap->fd, data, *len);
 	if (ret <= 0)
 		return -1;
 	*len = ret;
 	return 0;
 }
 
-static int net_poll(union lkl_netdev nd, int events)
+static int net_poll(struct lkl_netdev *nd, int events)
 {
+    struct lkl_netdev_tap *nd_tap;
+
+    nd_tap = (struct lkl_netdev_tap *)nd;
+
 	struct pollfd pfd = {
-		.fd = nd.fd,
+		.fd = nd_tap->fd,
 	};
 	int ret = 0;
 
@@ -71,10 +85,17 @@ struct lkl_dev_net_ops tap_net_ops = {
 	.poll = net_poll,
 };
 
-union lkl_netdev nuse_vif_tap_create(const char *ifname)
+struct lkl_netdev *nuse_vif_tap_create(const char *ifname)
 {
-	union lkl_netdev nd;
+	struct lkl_netdev_tap *nd;
 	int ret;
+
+	nd = (struct lkl_netdev_tap *)malloc(sizeof(struct lkl_netdev_tap));
+	if (!nd) {
+        fprintf(stderr, "failed to allocate memory\n");
+        // TODO: propagate the error state, maybe use errno for that?
+        return 0;
+	}
 
 	struct ifreq ifr = {
 		.ifr_flags = IFF_TAP | IFF_NO_PI,
@@ -82,19 +103,19 @@ union lkl_netdev nuse_vif_tap_create(const char *ifname)
 
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
-	nd.fd = open("/dev/net/tun", O_RDWR|O_NONBLOCK);
-	if (nd.fd < 0) {
+	nd->fd = open("/dev/net/tun", O_RDWR|O_NONBLOCK);
+	if (nd->fd < 0) {
 		fprintf(stderr, "failed to open tap: %s\n", strerror(errno));
-		return nd;
+		return 0;
 	}
 
-	ret = ioctl(nd.fd, TUNSETIFF, &ifr);
+	ret = ioctl(nd->fd, TUNSETIFF, &ifr);
 	if (ret < 0) {
 		fprintf(stderr, "failed to attach to %s: %s\n",
 			ifr.ifr_name, strerror(errno));
-		close(nd.fd);
-		return nd;
+		close(nd->fd);
+		return 0;
 	}
 
-	return nd;
+	return (struct lkl_netdev *)nd;
 }

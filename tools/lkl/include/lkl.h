@@ -190,13 +190,9 @@ int lkl_set_ipv4_gateway(unsigned int addr);
 
 /**
  * lkl_netdev - host network device handle
- *
- * @fd - TAP device or packet socket file descriptor
  */
-union lkl_netdev {
-	int fd;
-	void *dpdk;
-};
+struct lkl_netdev;
+
 
 struct lkl_dev_net_ops;
 
@@ -211,7 +207,7 @@ struct lkl_dev_net_ops;
  * @returns a network device id (0 is valid) or a strictly negative value in
  * case of error
  */
-int lkl_netdev_add(union lkl_netdev nd, struct lkl_dev_net_ops *ops, void *mac);
+int lkl_netdev_add(struct lkl_netdev *nd, struct lkl_dev_net_ops *ops, void *mac);
 
 /**
  * lkl_netdev_get_ifindex - retrieve the interface index for a given network

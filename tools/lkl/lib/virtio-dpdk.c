@@ -31,7 +31,6 @@
 #undef st_ctime
 #include <lkl_host.h>
 
-
 static const char *ealargs[] = {
 	"nuse_vif_dpdk",
 	"-c 1",
@@ -75,12 +74,15 @@ struct nuse_vif_dpdk {
 	int bufidx;
 };
 
+struct lkl_netdev_dpdk {
+    struct nuse_vif_dpdk dpdk;
+};
 
-static int net_tx(union lkl_netdev nd, void *data, int len)
+static int net_tx(struct lkl_netdev *nd, void *data, int len)
 {
 	void *pkt;
 	struct rte_mbuf *rm;
-	struct nuse_vif_dpdk *dpdk = nd.dpdk;
+	struct nuse_vif_dpdk *dpdk = &((struct lkl_netdev_dpdk *)nd)->dpdk;
 
 	rm = rte_pktmbuf_alloc(dpdk->txpool);
 	pkt = rte_pktmbuf_append(rm, len);
@@ -90,9 +92,9 @@ static int net_tx(union lkl_netdev nd, void *data, int len)
 	/* XXX: should be bursted !! */
 }
 
-static int net_rx(union lkl_netdev nd, void *data, int *len)
+static int net_rx(struct lkl_netdev *nd, void *data, int *len)
 {
-	struct nuse_vif_dpdk *dpdk = nd.dpdk;
+    struct nuse_vif_dpdk *dpdk = &((struct lkl_netdev_dpdk *)nd)->dpdk;
 
 	while (dpdk->npkts > 0) {
 		struct rte_mbuf *rm, *rm0;
@@ -120,7 +122,7 @@ static int net_rx(union lkl_netdev nd, void *data, int *len)
 	return 0;
 }
 
-static int net_poll(union lkl_netdev nd, int events)
+static int net_poll(struct lkl_netdev *nd, int events)
 {
 	int ret = 0;
 
@@ -138,9 +140,9 @@ struct lkl_dev_net_ops dpdk_net_ops = {
 	.poll = net_poll,
 };
 
-union lkl_netdev nuse_vif_dpdk_create(const char *ifname)
+struct lkl_netdev *nuse_vif_dpdk_create(const char *ifname)
 {
-	union lkl_netdev nd;
+    struct lkl_netdev_dpdk *nd;
 	int ret = 0;
 	static int dpdk_init = 0;
 	struct rte_eth_conf portconf;
@@ -162,7 +164,8 @@ union lkl_netdev nuse_vif_dpdk_create(const char *ifname)
 		dpdk_init = 1;
 	}
 
-	dpdk = malloc(sizeof(struct nuse_vif_dpdk));
+    nd = malloc(sizeof(struct lkl_netdev_dpdk));
+	dpdk = &nd->dpdk;
 	dpdk->portid = portid++;
 	snprintf(dpdk->txpoolname, 16, "%s%s", "tx", ifname);
 	snprintf(dpdk->rxpoolname, 16, "%s%s", "rx", ifname);
@@ -216,6 +219,5 @@ union lkl_netdev nuse_vif_dpdk_create(const char *ifname)
 	/* should be promisc ? */
 	rte_eth_promiscuous_enable(dpdk->portid);
 
-	nd.dpdk = dpdk;
-	return nd;
+    return (struct lkl_netdev *)nd;
 }
