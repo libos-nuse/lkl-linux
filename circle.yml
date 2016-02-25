@@ -29,8 +29,8 @@ test:
         parallel: true
     - cd tools/lkl && if [ $CIRCLE_NODE_INDEX -eq 2 ] ; then make tests/boot-in.o; arm-linux-androideabi-gcc -o tests/boot tests/boot-in.o liblkl.a -static ; fi:
         parallel: true
-#    - cd tools/lkl && make test:
-#        parallel: true
+    - cd tools/lkl:
+         parallel: true
 
     - ? >
         if [ -n "${RUN_NIGHTLY_BUILD}" ]; then
