@@ -2,7 +2,8 @@
 
 dpdk_version="17.02"
 
-git clone -b v${dpdk_version} git://dpdk.org/dpdk dpdk-${dpdk_version}
+#git clone -b v${dpdk_version} git://dpdk.org/dpdk dpdk-${dpdk_version}
+git clone -b v${dpdk_version} http://dpdk.org/git/dpdk dpdk-${dpdk_version}
 
 RTE_SDK=$(pwd)/dpdk-${dpdk_version}
 RTE_TARGET=$(uname -m)-native-linuxapp-gcc
