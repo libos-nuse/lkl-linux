@@ -160,6 +160,19 @@ HOOK_FD_CALL(splice)
 HOOK_FD_CALL(vmsplice)
 HOOK_CALL_USE_HOST_BEFORE_START(pipe);
 
+HOOK_CALL_USE_HOST_BEFORE_START(accept4);
+int accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags)
+{
+	return lkl_call(__lkl__NR_accept4, 4, fd, addr, addrlen, flags);
+}
+
+
+HOOK_CALL_USE_HOST_BEFORE_START(pipe2);
+int pipe2(int pipefd[2], int flags)
+{
+	return lkl_call(__lkl__NR_pipe2, 2, pipefd, flags);
+}
+
 HOST_CALL(setsockopt);
 int setsockopt(int fd, int level, int optname, const void *optval,
 	       socklen_t optlen)
@@ -291,7 +304,25 @@ int select(int nfds, fd_set *r, fd_set *w, fd_set *e, struct timeval *t)
 	return lkl_call(__lkl__NR_select, 5, nfds, r, w, e, t);
 }
 
-HOOK_CALL_USE_HOST_BEFORE_START(epoll_create);
+HOST_CALL(epoll_create);
+int epoll_create(int flags)
+{
+	int nRes;
+	lkl_printf("lkl: epoll_create\n");
+	if(!lkl_running)
+		nRes = host_epoll_create(flags);
+	else
+		nRes = lkl_call(__lkl__NR_epoll_create, 1, flags);
+	return nRes;
+}
+
+HOOK_CALL_USE_HOST_BEFORE_START(epoll_create1);
+int epoll_create1(int flags)
+{
+	int nRes = lkl_call(__lkl__NR_epoll_create1, 1, flags);
+	return nRes;
+}
+
 
 HOST_CALL(epoll_ctl);
 int epoll_ctl(int epollfd, int op, int fd, struct epoll_event *event)
@@ -351,4 +382,11 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 	    prot != (PROT_READ|PROT_WRITE) || fd != -2 || offset != 0)
 		return (void *)host_mmap(addr, length, prot, flags, fd, offset);
 	return lkl_sys_mmap(addr, length, prot, flags, fd, offset);
+}
+
+HOST_CALL(__xstat64)
+int stat(const char *pathname, struct stat *buf)
+{
+	CHECK_HOST_CALL(__xstat64);
+	return host___xstat64(0, pathname, buf);
 }
