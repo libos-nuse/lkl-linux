@@ -48,6 +48,20 @@ static int fd_net_tx(struct lkl_netdev *nd, struct iovec *iov, int cnt)
 	struct lkl_netdev_fd *nd_fd =
 		container_of(nd, struct lkl_netdev_fd, dev);
 
+	if (nd->is_ip_encap) {
+		/* XXX */
+		if (iov[0].iov_len > LKL_ETH_HLEN) {
+			iov[0].iov_base += LKL_ETH_HLEN;
+			iov[0].iov_len -= LKL_ETH_HLEN;
+		} else if (iov[1].iov_len > LKL_ETH_HLEN && cnt > 1) {
+			iov[1].iov_base += LKL_ETH_HLEN;
+			iov[1].iov_len -= LKL_ETH_HLEN;
+		} else {
+			fprintf(stderr, "wrong length: 0:%d, 1:%d, cnt:%d\n",
+				iov[0].iov_len, iov[1].iov_len, cnt);
+		}
+	}
+
 	do {
 		ret = writev(nd_fd->fd_tx, iov, cnt);
 	} while (ret == -1 && errno == EINTR);
@@ -72,6 +86,20 @@ static int fd_net_rx(struct lkl_netdev *nd, struct iovec *iov, int cnt)
 	struct lkl_netdev_fd *nd_fd =
 		container_of(nd, struct lkl_netdev_fd, dev);
 
+	if (nd->is_ip_encap) {
+		/* XXX: may not work with offload case */
+		if (iov[0].iov_len > LKL_ETH_HLEN) {
+			iov[0].iov_base += LKL_ETH_HLEN;
+			iov[0].iov_len -= LKL_ETH_HLEN;
+		} else if (iov[1].iov_len > LKL_ETH_HLEN && cnt > 1) {
+			iov[1].iov_base += LKL_ETH_HLEN;
+			iov[1].iov_len -= LKL_ETH_HLEN;
+		} else {
+			fprintf(stderr, "wrong length: 0:%d, 1:%d, cnt:%d\n",
+				iov[0].iov_len, iov[1].iov_len, cnt);
+		}
+	}
+
 	do {
 		ret = readv(nd_fd->fd_rx, (struct iovec *)iov, cnt);
 	} while (ret == -1 && errno == EINTR);
@@ -87,6 +115,28 @@ static int fd_net_rx(struct lkl_netdev *nd, struct iovec *iov, int cnt)
 				perror("virtio net fd pipe write");
 		}
 	}
+
+
+	if (nd->is_ip_encap && ret > 0) {
+		struct iovec *riov = NULL;
+
+		if (iov[0].iov_len > LKL_ETH_HLEN)
+			riov = &iov[0];
+		else if (iov[1].iov_len > LKL_ETH_HLEN && cnt > 1)
+			riov = &iov[1];
+		else
+			fprintf(stderr, "wrong length: 0:%d, 1:%d, cnt:%d\n",
+				iov[0].iov_len, iov[1].iov_len, cnt);
+
+		riov->iov_base -= LKL_ETH_HLEN;
+		riov->iov_len += LKL_ETH_HLEN;
+		ret += LKL_ETH_HLEN;
+
+		memcpy(riov->iov_base, nd->mac, LKL_ETH_ALEN);
+		memset(riov->iov_base + 12, 0x08, 1);
+		memset(riov->iov_base + 13, 0x00, 1);
+	}
+
 	return ret;
 }
 

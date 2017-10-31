@@ -757,3 +757,35 @@ void lkl_qdisc_parse_add(int ifindex, char *entries)
 		}
 	}
 }
+
+int lkl_netdev_ipencap_conf(int ifindex, struct lkl_netdev *nd)
+{
+	struct lkl_ifreq ifr;
+	int err, sock = lkl_sys_socket(LKL_AF_INET, LKL_SOCK_DGRAM, 0);
+
+	if (sock < 0)
+		return sock;
+	err = ifindex_to_name(sock, &ifr, ifindex);
+	if (err < 0)
+		return err;
+
+	/* Set to NOARP and PPP */
+	err = lkl_sys_ioctl(sock, LKL_SIOCGIFFLAGS, (long)&ifr);
+	if (!err) {
+		ifr.lkl_ifr_flags |= (LKL_IFF_NOARP | LKL_IFF_POINTOPOINT);
+		err = lkl_sys_ioctl(sock, LKL_SIOCSIFFLAGS, (long)&ifr);
+	}
+
+	/* Obtain assigned HWADDR */
+	err = lkl_sys_ioctl(sock, LKL_SIOCGIFHWADDR, (long)&ifr);
+	if (err) {
+		lkl_printf("%s: ioctl failed (SIOCGIFHWADDR) (err=%d)\n",
+			   ifr.lkl_ifr_name, err);
+		return err;
+	}
+	memcpy(&(nd->mac), ifr.lkl_ifr_hwaddr.sa_data, LKL_ETH_ALEN);
+
+	lkl_sys_close(sock);
+
+	return err;
+}

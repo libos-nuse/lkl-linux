@@ -437,8 +437,9 @@ struct lkl_netdev *lkl_netdev_vde_create(const char *switch_path);
  *                         backend
  *
  * @ifname - interface name for the snoop device.
+ * @raw    - if the device is pure raw socket or not
  */
-struct lkl_netdev *lkl_netdev_raw_create(const char *ifname);
+struct lkl_netdev *lkl_netdev_raw_create(const char *ifname, int raw);
 
 /**
  * lkl_netdev_macvtap_create - create macvtap net_device for the virtio

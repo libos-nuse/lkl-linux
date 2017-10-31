@@ -141,7 +141,7 @@ static int test_net_init(int argc, char **argv)
 	else if (iftype && ifname && (strncmp(iftype, "dpdk", 4) == 0))
 		nd = lkl_netdev_dpdk_create(ifname, 0, NULL);
 	else if (iftype && ifname && (strncmp(iftype, "raw", 3) == 0))
-		nd = lkl_netdev_raw_create(ifname);
+		nd = lkl_netdev_raw_create(ifname, 1);
 	else if (iftype && ifname && (strncmp(iftype, "macvtap", 7) == 0))
 		nd = lkl_netdev_macvtap_create(ifname, 0);
 	else if (iftype && ifname && (strncmp(iftype, "pipe", 4) == 0))

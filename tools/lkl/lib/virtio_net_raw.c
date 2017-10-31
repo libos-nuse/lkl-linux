@@ -26,13 +26,18 @@
 #define PACKET_QDISC_BYPASS 20
 #endif
 
-struct lkl_netdev *lkl_netdev_raw_create(const char *ifname)
+struct lkl_netdev *lkl_netdev_raw_create(const char *ifname, int raw)
 {
 	int ret;
 	struct sockaddr_ll ll;
 	int fd, fd_flags, val;
+	struct lkl_netdev *nd;
 
-	fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	if (raw)
+		fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	else
+		fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP));
+
 	if (fd < 0) {
 		perror("socket");
 		return NULL;
@@ -41,7 +46,10 @@ struct lkl_netdev *lkl_netdev_raw_create(const char *ifname)
 	memset(&ll, 0, sizeof(ll));
 	ll.sll_family = PF_PACKET;
 	ll.sll_ifindex = if_nametoindex(ifname);
-	ll.sll_protocol = htons(ETH_P_ALL);
+	if (raw)
+		ll.sll_protocol = htons(ETH_P_ALL);
+	else
+		ll.sll_protocol = htons(ETH_P_IP);
 	ret = bind(fd, (struct sockaddr *)&ll, sizeof(ll));
 	if (ret) {
 		perror("bind");
@@ -58,5 +66,9 @@ struct lkl_netdev *lkl_netdev_raw_create(const char *ifname)
 	fd_flags = fcntl(fd, F_GETFD, NULL);
 	fcntl(fd, F_SETFL, fd_flags | O_NONBLOCK);
 
-	return lkl_register_netdev_fd(fd, fd);
+	nd = lkl_register_netdev_fd(fd, fd);
+	if (nd && !raw)
+		nd->is_ip_encap = 1;
+
+	return nd;
 }
