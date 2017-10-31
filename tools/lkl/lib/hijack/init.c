@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <signal.h>
 #include <sys/ioctl.h>
 #include <lkl.h>
 #include <lkl_host.h>
@@ -516,6 +515,9 @@ hijack_init(void)
 
 	for (i = 1; i < LKL_FD_OFFSET; i++)
 		lkl_sys_dup(dev_null);
+
+	extern int dual_fds[];
+	memset(dual_fds, -1, sizeof(int) * 512);
 
 	/* lo iff_up */
 	lkl_if_up(1);
