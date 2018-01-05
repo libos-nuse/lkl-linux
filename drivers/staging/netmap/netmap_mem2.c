@@ -65,7 +65,7 @@ MALLOC_DEFINE(M_NETMAP, "netmap", "Network memory map");
 #include <netmap/netmap.h>
 #include <netmap/netmap_kern.h>
 #include "netmap_virt.h"
-#include "netmap_mem2.h"
+#include <netmap/netmap_mem2.h>
 
 #ifdef _WIN32_USE_SMALL_GENERIC_DEVICES_MEMORY
 #define NETMAP_BUF_MAX_NUM  8*4096      /* if too big takes too much time to allocate */

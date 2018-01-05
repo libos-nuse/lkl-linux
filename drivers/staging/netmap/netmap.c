@@ -473,7 +473,7 @@ ports attached to the switch)
  */
 #include <netmap/netmap.h>
 #include <netmap/netmap_kern.h>
-#include "netmap_mem2.h"
+#include <netmap/netmap_mem2.h>
 
 
 /* user-controlled variables */

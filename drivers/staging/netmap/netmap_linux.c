@@ -29,7 +29,7 @@
 #include <netmap/netmap.h>
 #include <netmap/netmap_kern.h>
 #include "netmap_virt.h"
-#include "netmap_mem2.h"
+#include <netmap/netmap_mem2.h>
 #include <net/ip6_checksum.h>
 #include <linux/rtnetlink.h>
 #include <linux/nsproxy.h>
