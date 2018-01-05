@@ -1,0 +1,16 @@
+#
+# Netmap - user mode packet processing framework
+#
+
+config NETMAP
+	tristate "Netmap - user mode networking"
+	depends on NET && !IOMMU_API
+	default n
+	help
+	  If you say Y here, you will get experimental support for
+	  netmap a framework for fast packet I/O using memory mapped
+	  buffers.
+
+	  See <http:/nfo.iet.unipi.it/~luigi/netmap/> for more information.
+
+	  If unsure, say N.

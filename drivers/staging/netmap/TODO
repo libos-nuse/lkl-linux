@@ -1,0 +1,21 @@
+
+This driver is functional but needs some cleanup before it is ready
+for included in networking subsystem.
+
+  - Use unifdef to elimiate non Linux code
+  - Get rid of wrapper code including bsd_glue.h
+  - Fix coding style to be Linux rather than BSD
+  - Fix whitespace warnings
+  - Add stubs so that ethernet drivers can use without #ifdef's
+  - Autoload the module, assign a real minor number and have aliases
+  - Rework documentation and put in Documentation/networking/
+  - Remove memory allocator kludge wrapper
+  - Remove devfs kludge wrappers
+  - Review configuration API's and management (counters)
+  - Locking should be consistent (ie get rid of separate_locks option)?
+  - Doesn't work with DMA remapping
+  - Use __u32 rather than uint32_t in headers
+  - netmap_user.h headers should use inline instead of macros
+
+Fundamentally this will break source compatiablity with FreeBSD,
+but this is not our problem.

@@ -1,0 +1,3 @@
+# UAPI Header export list
+header-y += netmap.h
+header-y += netmap_user.h

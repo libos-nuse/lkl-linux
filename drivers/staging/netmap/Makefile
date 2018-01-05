@@ -1,0 +1,2 @@
+EXTRA_CFLAGS := -DDEBUG
+obj-$(CONFIG_NETMAP) += netmap.o
