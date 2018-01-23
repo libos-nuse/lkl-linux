@@ -16,7 +16,9 @@
 #include <dlfcn.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#ifdef __linux__
 #include <sys/epoll.h>
+#endif
 #include <stdint.h>
 #include <string.h>
 #include <fcntl.h>
@@ -24,6 +26,7 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <assert.h>
+#include <netinet/in.h>
 #include <lkl.h>
 #include <lkl_host.h>
 
@@ -138,26 +141,32 @@ static int lkl_call(int nr, int args, ...)
 }
 
 HOOK_FD_CALL(close)
-HOOK_FD_CALL(recvmsg)
-HOOK_FD_CALL(sendmsg)
-HOOK_FD_CALL(sendmmsg)
-HOOK_FD_CALL(getsockname)
-HOOK_FD_CALL(getpeername)
-HOOK_FD_CALL(bind)
-HOOK_FD_CALL(connect)
 HOOK_FD_CALL(listen)
 HOOK_FD_CALL(shutdown)
-HOOK_FD_CALL(accept)
 HOOK_FD_CALL(write)
 HOOK_FD_CALL(writev)
+/* Available BSD-compat calls */
+#ifdef __linux__
+HOOK_FD_CALL(bind)
+HOOK_FD_CALL(getsockname)
+HOOK_FD_CALL(getpeername)
+HOOK_FD_CALL(connect)
+HOOK_FD_CALL(sendmsg)
+HOOK_FD_CALL(accept)
 HOOK_FD_CALL(sendto)
+HOOK_FD_CALL(recvfrom)
+HOOK_FD_CALL(recvmsg)
+#endif
 HOOK_FD_CALL(send)
 HOOK_FD_CALL(read)
-HOOK_FD_CALL(recvfrom)
 HOOK_FD_CALL(recv)
+/* Linux specific calls */
+#ifdef __linux__
+HOOK_FD_CALL(sendmmsg)
 HOOK_FD_CALL(epoll_wait)
 HOOK_FD_CALL(splice)
 HOOK_FD_CALL(vmsplice)
+#endif
 HOOK_CALL_USE_HOST_BEFORE_START(pipe);
 
 HOOK_CALL_USE_HOST_BEFORE_START(accept4);
@@ -170,8 +179,17 @@ int setsockopt(int fd, int level, int optname, const void *optval,
 	CHECK_HOST_CALL(setsockopt);
 	if (!is_lklfd(fd))
 		return host_setsockopt(fd, level, optname, optval, optlen);
+
+#ifdef IPV6_USE_MIN_MTU
+	if (optname == IPV6_USE_MIN_MTU)
+		return 0;
+	if (optname == IPV6_MULTICAST_HOPS)
+		return 0;
+#endif
+
 	return lkl_call(__lkl__NR_setsockopt, 5, fd, lkl_solevel_xlate(level),
-			lkl_soname_xlate(optname), (void*)optval, optlen);
+			lkl_soname_xlate(optname),
+			lkl_soval_xlate(optname, optval, optlen), optlen);
 }
 
 HOST_CALL(getsockopt);
@@ -188,11 +206,14 @@ HOST_CALL(socket);
 int socket(int domain, int type, int protocol)
 {
 	CHECK_HOST_CALL(socket);
-	if (domain == AF_UNIX || domain == PF_PACKET)
+	if (domain == AF_UNIX /* || domain == PF_PACKET */)
 		return host_socket(domain, type, protocol);
 
 	if (!lkl_running)
 		return host_socket(domain, type, protocol);
+
+	if (domain == AF_INET6)
+		domain = LKL_AF_INET6;
 
 	return lkl_call(__lkl__NR_socket, 3, domain, type, protocol);
 }
@@ -301,6 +322,7 @@ int select(int nfds, fd_set *r, fd_set *w, fd_set *e, struct timeval *t)
 	return lkl_call(__lkl__NR_select, 5, nfds, r, w, e, t);
 }
 
+#ifdef __linux__
 HOOK_CALL_USE_HOST_BEFORE_START(epoll_create);
 HOOK_CALL_USE_HOST_BEFORE_START(epoll_create1);
 
@@ -372,3 +394,4 @@ int stat(const char *pathname, struct stat *buf)
 	return host___xstat64(0, pathname, buf);
 }
 #endif
+#endif /* __linux__ */

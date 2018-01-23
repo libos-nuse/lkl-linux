@@ -16,6 +16,8 @@ set_cfgjson()
 
     if [ -n "$LKL_HOST_CONFIG_ANDROID" ]; then
         adb shell cat \> ${cfgjson}
+    elif [ -n "$LKL_HOST_CONFIG_BSD" ]; then
+        $MYSSH cat \> ${cfgjson}
     else
         cat > ${cfgjson}
     fi
@@ -97,8 +99,8 @@ test_pipe_setup()
 {
     set -e
 
-    mkfifo ${fifo1}
-    mkfifo ${fifo2}
+    lkl_test_cmd mkfifo ${fifo1}
+    lkl_test_cmd mkfifo ${fifo2}
 
     set_cfgjson << EOF
     {
@@ -167,10 +169,10 @@ EOF
 EOF
 
     # Ping under LKL
-    run_hijack_cfg ${ping} -c 1 -w 10 $(ip_host)
+    run_hijack_cfg ${ping} -c 1 -W 10 $(ip_host)
 
     # Ping 6 under LKL
-    run_hijack_cfg ${ping6} -c 1 -w 10 $(ip6_host)
+    run_hijack_cfg ${ping6} -c 1 -W 10 $(ip6_host)
 
     wait
 }
@@ -670,6 +672,19 @@ fi
 if [ -n "$LKL_HOST_CONFIG_ANDROID" ]; then
     wdir=$ANDROID_WDIR
     adb_push lib/hijack/liblkl-hijack.so bin/lkl-hijack.sh tests/net-setup.sh \
+             tests/run_netperf.sh tests/hijack-test.sh
+    ping="ping"
+    ping6="ping6"
+    hijack="$wdir/bin/lkl-hijack.sh"
+    netperf="$wdir/tests/run_netperf.sh"
+elif [ -n "$LKL_HOST_CONFIG_BSD" ]; then
+    #XXX: for the moment, skip for bsd tests
+    lkl_test_plan 0 "hijack tests"
+    echo "freebsd hijack tests are skipped."
+    exit 0
+
+    wdir=$BSD_WDIR
+    ssh_push lib/hijack/liblkl-hijack.so bin/lkl-hijack.sh tests/net-setup.sh \
              tests/run_netperf.sh tests/hijack-test.sh
     ping="ping"
     ping6="ping6"

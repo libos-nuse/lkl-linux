@@ -13,7 +13,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <linux/if_tun.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -155,6 +154,7 @@ static void mount_cmds_exec(char *_cmds, int (*callback)(char*))
 	free(cmds);
 }
 
+#ifdef __linux__
 static void PinToCpus(const cpu_set_t* cpus)
 {
 	if (sched_setaffinity(0, sizeof(cpu_set_t), cpus)) {
@@ -176,6 +176,7 @@ static void PinToFirstCpu(const cpu_set_t* cpus)
 		}
 	}
 }
+#endif
 
 int lkl_debug, lkl_running;
 
@@ -411,7 +412,9 @@ hijack_init(void)
 	int ret, i, dev_null;
 	int single_cpu_mode = 0;
 	int ifidx;
+#ifdef __linux__
 	cpu_set_t ori_cpu;
+#endif
 
 	ret = config_load();
 	if (ret < 0)
@@ -449,6 +452,7 @@ hijack_init(void)
 		}
 	}
 
+#ifdef __linux__
 	if (single_cpu_mode) {
 		if (sched_getaffinity(0, sizeof(cpu_set_t), &ori_cpu)) {
 			perror("sched_getaffinity");
@@ -461,6 +465,7 @@ hijack_init(void)
 	 */
 	if (single_cpu_mode == 2)
 		PinToFirstCpu(&ori_cpu);
+#endif
 
 	for (ifidx = 0; ifidx < cfg->ifnum; ifidx++) {
 		ret = lkl_hijack_netdev_create(cfg, ifidx);
@@ -468,8 +473,10 @@ hijack_init(void)
 			return;
 	}
 
+#ifdef __linux__
 	if (single_cpu_mode == 1)
 		PinToFirstCpu(&ori_cpu);
+#endif
 
 #ifdef __ANDROID__
 	struct sigaction sa;
@@ -490,9 +497,11 @@ hijack_init(void)
 
 	lkl_running = 1;
 
+#ifdef __linux__
 	/* restore cpu affinity */
 	if (single_cpu_mode)
 		PinToCpus(&ori_cpu);
+#endif
 
 	ret = lkl_set_fd_limit(65535);
 	if (ret)

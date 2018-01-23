@@ -1,8 +1,12 @@
 #include <errno.h>
 #define __USE_GNU
 #include <fcntl.h>
+#include <sys/types.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/icmp6.h>
 #undef st_atime
 #undef st_mtime
 #undef st_ctime
@@ -142,6 +146,7 @@ long lkl_set_errno(long err)
 	case -LKL_EIDRM:
 		errno = EIDRM;
 		break;
+#ifdef __linux__
 	case -LKL_ECHRNG:
 		errno = ECHRNG;
 		break;
@@ -301,9 +306,11 @@ long lkl_set_errno(long err)
 	case -LKL_EAFNOSUPPORT:
 		errno = EAFNOSUPPORT;
 		break;
+#endif
 	case -LKL_EADDRINUSE:
 		errno = EADDRINUSE;
 		break;
+#ifdef __linux__
 	case -LKL_EADDRNOTAVAIL:
 		errno = EADDRNOTAVAIL;
 		break;
@@ -409,6 +416,7 @@ long lkl_set_errno(long err)
 	case -LKL_EHWPOISON:
 		errno = EHWPOISON;
 		break;
+#endif
 	}
 
 	return -1;
@@ -433,14 +441,17 @@ int lkl_soname_xlate(int soname)
 		return LKL_SO_SNDBUF;
 	case SO_RCVBUF:
 		return LKL_SO_RCVBUF;
+#ifdef __linux__
 	case SO_SNDBUFFORCE:
 		return LKL_SO_SNDBUFFORCE;
 	case SO_RCVBUFFORCE:
 		return LKL_SO_RCVBUFFORCE;
+#endif
 	case SO_KEEPALIVE:
 		return LKL_SO_KEEPALIVE;
 	case SO_OOBINLINE:
 		return LKL_SO_OOBINLINE;
+#ifdef __linux__
 	case SO_NO_CHECK:
 		return LKL_SO_NO_CHECK;
 	case SO_PRIORITY:
@@ -449,14 +460,18 @@ int lkl_soname_xlate(int soname)
 		return LKL_SO_LINGER;
 	case SO_BSDCOMPAT:
 		return LKL_SO_BSDCOMPAT;
+#endif
 #ifdef SO_REUSEPORT
 	case SO_REUSEPORT:
 		return LKL_SO_REUSEPORT;
 #endif
+
+#ifdef __linux__
 	case SO_PASSCRED:
 		return LKL_SO_PASSCRED;
 	case SO_PEERCRED:
 		return LKL_SO_PEERCRED;
+#endif
 	case SO_RCVLOWAT:
 		return LKL_SO_RCVLOWAT;
 	case SO_SNDLOWAT:
@@ -465,6 +480,7 @@ int lkl_soname_xlate(int soname)
 		return LKL_SO_RCVTIMEO;
 	case SO_SNDTIMEO:
 		return LKL_SO_SNDTIMEO;
+#ifdef __linux__
 	case SO_SECURITY_AUTHENTICATION:
 		return LKL_SO_SECURITY_AUTHENTICATION;
 	case SO_SECURITY_ENCRYPTION_TRANSPORT:
@@ -479,8 +495,10 @@ int lkl_soname_xlate(int soname)
 		return LKL_SO_DETACH_FILTER;
 	case SO_PEERNAME:
 		return LKL_SO_PEERNAME;
+#endif
 	case SO_TIMESTAMP:
 		return LKL_SO_TIMESTAMP;
+#ifdef __linux__
 	case SO_ACCEPTCONN:
 		return LKL_SO_ACCEPTCONN;
 	case SO_PEERSEC:
@@ -493,12 +511,15 @@ int lkl_soname_xlate(int soname)
 		return LKL_SO_MARK;
 	case SO_TIMESTAMPING :
 		return LKL_SO_TIMESTAMPING;
+#endif
 	case SO_PROTOCOL:
 		return LKL_SO_PROTOCOL;
+#ifdef __linux__
 	case SO_DOMAIN:
 		return LKL_SO_DOMAIN;
 	case SO_RXQ_OVFL:
 		return LKL_SO_RXQ_OVFL;
+#endif
 #ifdef SO_WIFI_STATUS
 	case SO_WIFI_STATUS:
 		return LKL_SO_WIFI_STATUS;
@@ -527,9 +548,36 @@ int lkl_soname_xlate(int soname)
 	case SO_MAX_PACING_RATE:
 		return LKL_SO_MAX_PACING_RATE;
 #endif
+	case IPV6_RECVPKTINFO:
+		return LKL_IPV6_RECVPKTINFO;
+		//	case IPV6_USE_MIN_MTU:
+		//	  return LKL_IPV6_USE_MIN_MTU;
+	case IPV6_RECVHOPLIMIT:
+		return LKL_IPV6_RECVHOPLIMIT;
+#if defined(__FreeBSD__)
+	case ICMP6_FILTER:
+		return LKL_ICMPV6_FILTER;
+#endif
 	}
 
 	return soname;
+}
+
+void *lkl_soval_xlate(int optname, const void *optval, size_t optlen)
+{
+#if defined(__FreeBSD__)
+	if (optname == ICMP6_FILTER) {
+		struct icmp6_filter filter = *(struct icmp6_filter *)optval;
+		int i;
+
+		for (i = 0; i < 8; i++)
+			filter.icmp6_filt[i] = ~filter.icmp6_filt[i];
+
+		memcpy((void *)optval, &filter, optlen);
+	}
+#endif
+
+	return (void *)optval;
 }
 
 int lkl_solevel_xlate(int solevel)
@@ -555,10 +603,12 @@ unsigned long lkl_ioctl_req_xlate(unsigned long req)
 		return LKL_SIOCGPGRP;
 	case SIOCATMARK:
 		return LKL_SIOCATMARK;
+#ifdef __linux__
 	case SIOCGSTAMP:
 		return LKL_SIOCGSTAMP;
 	case SIOCGSTAMPNS:
 		return LKL_SIOCGSTAMPNS;
+#endif
 	}
 
 	/* TODO: asm/termios.h translations */
@@ -589,10 +639,12 @@ int lkl_fcntl_cmd_xlate(int cmd)
 		return LKL_F_SETOWN;
 	case F_GETOWN:
 		return LKL_F_GETOWN;
+#ifdef __linux__
 	case F_SETSIG:
 		return LKL_F_SETSIG;
 	case F_GETSIG:
 		return LKL_F_GETSIG;
+#endif
 #ifndef LKL_CONFIG_64BIT
 	case F_GETLK64:
 		return LKL_F_GETLK64;
@@ -601,10 +653,12 @@ int lkl_fcntl_cmd_xlate(int cmd)
 	case F_SETLKW64:
 		return LKL_F_SETLKW64;
 #endif
+#ifdef __linux__
 	case F_SETOWN_EX:
 		return LKL_F_SETOWN_EX;
 	case F_GETOWN_EX:
 		return LKL_F_GETOWN_EX;
+#endif
 	}
 
 	return cmd;

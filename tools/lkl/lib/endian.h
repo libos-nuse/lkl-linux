@@ -2,6 +2,13 @@
 #define _LKL_LIB_ENDIAN_H
 
 #if defined(__FreeBSD__)
+#define _SYS_CDEFS_H_
+#include <sys/cdefs.h>
+#undef __aligned
+#define __aligned(x)
+#undef _Alignof
+#define _Alignof(x)
+#include <sys/_types.h>
 #include <sys/endian.h>
 #elif defined(__ANDROID__)
 #include <sys/endian.h>

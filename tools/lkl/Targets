@@ -1,10 +1,10 @@
 libs-y += lib/liblkl
 
-ifneq ($(LKL_HOST_CONFIG_BSD),y)
 libs-$(LKL_HOST_CONFIG_POSIX) += lib/hijack/liblkl-hijack
-endif
 LDFLAGS_lib/hijack/liblkl-hijack-y += -shared -nodefaultlibs
+ifneq ($(LKL_HOST_CONFIG_BSD),y)
 LDLIBS_lib/hijack/liblkl-hijack-y += -ldl
+endif
 LDLIBS_lib/hijack/liblkl-hijack-$(LKL_HOST_CONFIG_ANDROID) += -lgcc -lc
 
 progs-$(LKL_HOST_CONFIG_FUSE) += lklfuse

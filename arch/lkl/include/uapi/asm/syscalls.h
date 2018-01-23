@@ -114,6 +114,7 @@ struct sockaddr {
 #define __UAPI_DEF_IP_MREQ	1
 #define __UAPI_DEF_IN_PKTINFO	1
 #define __UAPI_DEF_SOCKADDR_IN	1
+#define __UAPI_DEF_SOCKADDR_IN6	1
 #define __UAPI_DEF_IN_CLASS	1
 #include <linux/in.h>
 #include <linux/in6.h>
@@ -125,6 +126,9 @@ struct sockaddr {
 #include <linux/neighbour.h>
 #include <linux/rtnetlink.h>
 #include <linux/fib_rules.h>
+#include <linux/ip.h>
+#include <linux/icmp.h>
+#include <linux/icmpv6.h>
 
 #include <linux/kdev_t.h>
 #include <asm/irq.h>
@@ -142,6 +146,49 @@ struct user_msghdr {
 	__kernel_size_t	msg_controllen;		/* ancillary data buffer length */
 	unsigned int	msg_flags;		/* flags on received message */
 };
+
+struct cmsghdr {
+	__kernel_size_t cmsg_len; /* data byte count, including hdr */
+	int cmsg_level; /* originating protocol */
+	int cmsg_type; /* protocol-specific type */
+};
+
+#define __CMSG_NXTHDR(ctl, len, cmsg) __lkl_cmsg_nxthdr((ctl), (len), (cmsg))
+#define CMSG_NXTHDR(mhdr, cmsg) cmsg_nxthdr((mhdr), (cmsg))
+
+#define CMSG_ALIGN(len) (((len)+sizeof(long)-1) & ~(sizeof(long)-1))
+
+#define CMSG_DATA(cmsg)((void *)((char *)(cmsg) + sizeof(struct cmsghdr)))
+#define CMSG_SPACE(len) (sizeof(struct cmsghdr) + CMSG_ALIGN(len))
+#define CMSG_LEN(len) (sizeof(struct cmsghdr) + (len))
+
+#define __CMSG_FIRSTHDR(ctl, len) ((len) >= sizeof(struct cmsghdr) ? \
+				   (struct cmsghdr *)(ctl) :	     \
+				   (struct cmsghdr *)NULL)
+#define CMSG_FIRSTHDR(msg) __CMSG_FIRSTHDR((msg)->msg_control,		\
+					   (msg)->msg_controllen)
+
+/* since __cmsg_nxthdr conflicts with the system one, we prefixed 'lkl' */
+static inline struct cmsghdr *__lkl_cmsg_nxthdr(void *__ctl,
+						__kernel_size_t __size,
+						struct cmsghdr *__cmsg)
+{
+	struct cmsghdr *__ptr;
+
+	__ptr = (struct cmsghdr *)(((unsigned char *) __cmsg) +
+				   CMSG_ALIGN(__cmsg->cmsg_len));
+	if ((unsigned long)((char *)(__ptr+1) - (char *) __ctl) > __size)
+		return (struct cmsghdr *)0;
+
+	return __ptr;
+}
+
+static inline struct cmsghdr *cmsg_nxthdr(struct user_msghdr *__msg,
+					  struct cmsghdr *__cmsg)
+{
+	return __lkl_cmsg_nxthdr(__msg->msg_control, __msg->msg_controllen,
+				 __cmsg);
+}
 
 typedef __u32 key_serial_t;
 

@@ -1,4 +1,4 @@
 liblkl-hijack-y += hijack.o
 liblkl-hijack-y += init.o
 liblkl-hijack-y += xlate.o
-
+liblkl-hijack-$(LKL_HOST_CONFIG_BSD) += bsd-compat.o
