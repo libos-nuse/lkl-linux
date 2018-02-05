@@ -194,7 +194,8 @@ static int config_load(void)
 		perror("config malloc");
 		return -1;
 	}
-	init_config(cfg);
+	memset(cfg, 0, sizeof(struct lkl_config));
+//	init_config(cfg);
 
 	ret = load_config_env(cfg);
 	if (ret < 0)
@@ -412,6 +413,9 @@ static int lkl_hijack_netdev_configure(struct lkl_config *cfg, int ifidx)
 	return 0;
 }
 
+#include <android/log.h>
+#include <unistd.h>
+
 void __attribute__((constructor))
 hijack_init(void)
 {
@@ -419,6 +423,13 @@ hijack_init(void)
 	int single_cpu_mode = 0;
 	int ifidx;
 	cpu_set_t ori_cpu;
+
+	if (1){
+		char buf[256];
+		chdir("/data/local/tmp");
+		getcwd(buf, sizeof(buf));
+//		__android_log_print(ANDROID_LOG_DEBUG, "lkl", "curdir=%s\n", buf);
+	}
 
 	ret = config_load();
 	if (ret < 0)

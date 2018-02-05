@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #define __USE_GNU
@@ -393,7 +394,7 @@ static void *host_epollwait(void *arg)
 	struct epollarg *earg = arg;
 	int ret;
 
-	ret = host_epoll_wait(earg->epfd, earg->events, 
+	ret = host_epoll_wait(earg->epfd, earg->events,
 			      earg->maxevents, earg->timeout);
 	if (ret == -1)
 		earg->errnum = errno;
@@ -410,7 +411,8 @@ int epoll_wait(int epfd, struct epoll_event *events,
 
 	int l_pipe[2] = {-1,-1}, h_pipe[2] = {-1,-1};
 	struct epoll_event host_ev, lkl_ev;
-	struct epoll_event h_events[maxevents], l_events[maxevents];
+	int ret_events = maxevents;
+	struct epoll_event h_events[ret_events], l_events[ret_events];
 	struct epollarg earg;
 	pthread_t thread;
 	void *trv_val;
@@ -437,9 +439,11 @@ int epoll_wait(int epfd, struct epoll_event *events,
 	memset(&lkl_ev, 0, sizeof(lkl_ev));
 	lkl_ev.events = EPOLLIN;
 	lkl_ev.data.fd = l_pipe[0];
-	ret = lkl_call(__lkl__NR_epoll_ctl, 4, dual_fds[epfd], EPOLL_CTL_ADD, l_pipe[0], &lkl_ev);
+	ret = lkl_call(__lkl__NR_epoll_ctl, 4, dual_fds[epfd], EPOLL_CTL_ADD,
+		       l_pipe[0], &lkl_ev);
 	if (ret == -1) {
-		fprintf(stderr, "lkl epoll_ctl error(epfd=%d:%d, fd=%d, err=%d)\n", epfd, dual_fds[epfd], l_pipe[0], errno);
+		fprintf(stderr, "epoll_ctl error(epfd=%d:%d, fd=%d, err=%d)\n",
+			epfd, dual_fds[epfd], l_pipe[0], errno);
 		return -1;
 	}
 
@@ -448,14 +452,15 @@ int epoll_wait(int epfd, struct epoll_event *events,
 	host_ev.data.fd = h_pipe[0];
 	ret = host_epoll_ctl(epfd, EPOLL_CTL_ADD, h_pipe[0], &host_ev);
 	if (ret == -1) {
-		fprintf(stderr, "host epoll_ctl error(%d, %d, %d, %d)\n", epfd, h_pipe[0], h_pipe[1], errno);
+		fprintf(stderr, "host epoll_ctl error(%d, %d, %d, %d)\n",
+			epfd, h_pipe[0], h_pipe[1], errno);
 		return -1;
 	}
 
 
 	/* now wait by epoll_wait on 2 threads */
-	memset(&h_events, 0, sizeof(struct epoll_event) * maxevents);
-	memset(&l_events, 0, sizeof(struct epoll_event) * maxevents);
+	memset(h_events, 0, sizeof(struct epoll_event) * ret_events);
+	memset(l_events, 0, sizeof(struct epoll_event) * ret_events);
 	earg.epfd = epfd;
 	earg.events = h_events;
 	earg.maxevents = maxevents;
@@ -463,18 +468,39 @@ int epoll_wait(int epfd, struct epoll_event *events,
 	earg.pipefd = l_pipe[1];
 	pthread_create(&thread, NULL, host_epollwait, &earg);
 
-	ret_lkl = lkl_call(__lkl__NR_epoll_wait, 4, dual_fds[epfd], &l_events, maxevents, timeout);
+	ret_lkl = lkl_call(__lkl__NR_epoll_wait, 4, dual_fds[epfd], l_events,
+			   maxevents, timeout);
+	if (ret_lkl == -1) {
+		fprintf(stderr,
+			"lkl epoll_wait error(epfd=%d:%d, fd=%d, err=%d)\n",
+			epfd, dual_fds[epfd], l_pipe[0], errno);
+		return -1;
+	}
 	host_write(h_pipe[1], &ret, sizeof(ret));
 	pthread_join(thread, &trv_val);
 	ret_host = (int)(intptr_t)trv_val;
+	if (ret_host == -1) {
+		fprintf(stderr,
+			"host epoll_ctl error(%d, %d, %d, %d)\n", epfd,
+			h_pipe[0], h_pipe[1], errno);
+		return -1;
+	}
 
-	ret = lkl_call(__lkl__NR_epoll_ctl, 4, dual_fds[epfd], EPOLL_CTL_DEL, l_pipe[0], &lkl_ev);
+	ret = lkl_call(__lkl__NR_epoll_ctl, 4, dual_fds[epfd], EPOLL_CTL_DEL,
+		       l_pipe[0], &lkl_ev);
+	if (ret == -1) {
+		fprintf(stderr,
+			"lkl epoll_ctl error(epfd=%d:%d, fd=%d, err=%d)\n",
+			epfd, dual_fds[epfd], l_pipe[0], errno);
+		return -1;
+	}
+
 	ret = host_epoll_ctl(epfd, EPOLL_CTL_DEL, h_pipe[0], &host_ev);
-
-	lkl_call(__lkl__NR_close, 1, l_pipe[0]);
-	lkl_call(__lkl__NR_close, 1, l_pipe[1]);
-	host_close(h_pipe[0]);
-	host_close(h_pipe[1]);
+	if (ret == -1) {
+		fprintf(stderr, "host epoll_ctl error(%d, %d, %d, %d)\n",
+			epfd, h_pipe[0], h_pipe[1], errno);
+		return -1;
+	}
 
 	memset(events, 0, sizeof(struct epoll_event) * maxevents);
 	ret = 0;
@@ -484,7 +510,9 @@ int epoll_wait(int epfd, struct epoll_event *events,
 				continue;
 			if (is_lklfd(h_events[i].data.fd))
 				continue;
-			memcpy(events, &(h_events[i]), sizeof(struct epoll_event));
+
+			memcpy(events, &(h_events[i]),
+			       sizeof(struct epoll_event));
 			events++;
 			ret++;
 		}
@@ -495,11 +523,18 @@ int epoll_wait(int epfd, struct epoll_event *events,
 				continue;
 			if (!is_lklfd(l_events[i].data.fd))
 				continue;
-			memcpy(events, &(l_events[i]), sizeof(struct epoll_event));
+
+			memcpy(events, &(l_events[i]),
+			       sizeof(struct epoll_event));
 			events++;
 			ret++;
 		}
 	}
+
+	lkl_call(__lkl__NR_close, 1, l_pipe[0]);
+	lkl_call(__lkl__NR_close, 1, l_pipe[1]);
+	host_close(h_pipe[0]);
+	host_close(h_pipe[1]);
 
 	return ret;
 }
