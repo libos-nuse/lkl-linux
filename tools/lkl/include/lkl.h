@@ -468,6 +468,19 @@ lkl_netdev_tap_create(const char *ifname, int offload)
 #endif
 
 /**
+ * lkl_netdev_raspi_create - create raspi net_device for the virtio net backend
+ */
+#ifdef LKL_HOST_CONFIG_VIRTIO_NET_RASPI
+struct lkl_netdev *lkl_netdev_raspi_create(void);
+#else
+static inline struct lkl_netdev *
+lkl_netdev_raspi_create(void)
+{
+	return NULL;
+}
+#endif
+
+/**
  * lkl_netdev_dpdk_create - create DPDK net_device for the virtio net backend
  *
  * @ifname - interface name for the DPDK device. The name for DPDK device is

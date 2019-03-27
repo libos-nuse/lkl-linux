@@ -267,11 +267,43 @@ int lkl_load_config_env(struct lkl_config *cfg)
 
 	if (!cfg)
 		return -1;
-	if (envtap || enviftype)
-		cfg->ifnum = 1;
+
+	/* general config */
+	ret = cfgcpy(&cfg->gateway, envgateway);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->gateway6, envgateway6);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->debug, envdebug);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->mount, envmount);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->single_cpu, envsingle_cpu);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->sysctls, envsysctls);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->boot_cmdline, envboot_cmdline);
+	if (ret < 0)
+		return ret;
+	ret = cfgcpy(&cfg->dump, envdump);
+	if (ret < 0)
+		return ret;
+
+	/* network config */
+	if (!(envtap || enviftype))
+		return 0;
 
 	iface = malloc(sizeof(struct lkl_config_iface));
+	if (!iface)
+		return -1;
 	memset(iface, 0, sizeof(struct lkl_config_iface));
+	cfg->ifnum = 1;
+	cfg->ifaces = iface;
 
 	ret = cfgcpy(&iface->iftap, envtap);
 	if (ret < 0)
@@ -315,30 +347,7 @@ int lkl_load_config_env(struct lkl_config *cfg)
 	ret = cfgcpy(&iface->ifqdisc_entries, envqdisc_entries);
 	if (ret < 0)
 		return ret;
-	ret = cfgcpy(&cfg->gateway, envgateway);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->gateway6, envgateway6);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->debug, envdebug);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->mount, envmount);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->single_cpu, envsingle_cpu);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->sysctls, envsysctls);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->boot_cmdline, envboot_cmdline);
-	if (ret < 0)
-		return ret;
-	ret = cfgcpy(&cfg->dump, envdump);
-	if (ret < 0)
-		return ret;
+
 	return 0;
 }
 
@@ -492,6 +501,8 @@ static int lkl_config_netdev_create(struct lkl_config *cfg,
 						    mac);
 		} else if ((strcmp(iface->iftype, "pipe") == 0)) {
 			nd = lkl_netdev_pipe_create(iface->ifparams, offload);
+		} else if ((strcmp(iface->iftype, "raspi") == 0)) {
+			nd = lkl_netdev_raspi_create();
 		} else {
 			if (offload) {
 				lkl_printf("WARN: %s isn't supported on %s\n",

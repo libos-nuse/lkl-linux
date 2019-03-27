@@ -20,6 +20,7 @@ liblkl-$(LKL_HOST_CONFIG_POSIX) += virtio_net_raw.o
 liblkl-$(LKL_HOST_CONFIG_VIRTIO_NET_MACVTAP) += virtio_net_macvtap.o
 liblkl-$(LKL_HOST_CONFIG_VIRTIO_NET_DPDK) += virtio_net_dpdk.o
 liblkl-$(LKL_HOST_CONFIG_VIRTIO_NET_VDE) += virtio_net_vde.o
+liblkl-$(LKL_HOST_CONFIG_VIRTIO_NET_RASPI) += virtio_net_raspi.o
 liblkl-$(LKL_HOST_CONFIG_POSIX) += virtio_net_pipe.o
 liblkl-$(LKL_HOST_CONFIG_RUMP) += rump.o
 liblkl-$(LKL_HOST_CONFIG_RUMP) += rump-host.o
@@ -35,3 +36,4 @@ CFLAGS_rump-host.o = -I$(RUMP_PREFIX)/../platform/include \
 		   -I../../ \
 		   -DCONFIG_AUTO_LKL_POSIX_HOST -DCONFIG_LKL
 CFLAGS_rump-sysproxy.o += -I$(OUTPUT)/../../include
+CFLAGS_virtio_net_raspi.o += -I$(RUMP_PREFIX)/../platform/qemu-arm/include

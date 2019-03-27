@@ -7,12 +7,20 @@
 #define IOMEM_OFFSET_BITS		24
 #define MAX_IOMEM_REGIONS		256
 
+#ifdef LKL_HOST_CONFIG_VIRTIO_NET_RASPI
+extern char __iomem_start;
+static char *iomem_base = &__iomem_start;
+#else
+static char *const iomem_base; /* = 0 */
+#endif
+
 #define IOMEM_ADDR_TO_INDEX(addr) \
-	(((uintptr_t)addr) >> IOMEM_OFFSET_BITS)
+	(((uintptr_t)addr - (uintptr_t)iomem_base) >> IOMEM_OFFSET_BITS)
 #define IOMEM_ADDR_TO_OFFSET(addr) \
-	(((uintptr_t)addr) & ((1 << IOMEM_OFFSET_BITS) - 1))
+	(((uintptr_t)addr - (uintptr_t)iomem_base) & \
+	 ((1 << IOMEM_OFFSET_BITS) - 1))
 #define IOMEM_INDEX_TO_ADDR(i) \
-	(void *)(uintptr_t)(i << IOMEM_OFFSET_BITS)
+	(void *)((uintptr_t)iomem_base + (uintptr_t)(i << IOMEM_OFFSET_BITS))
 
 static struct iomem_region {
 	void *data;

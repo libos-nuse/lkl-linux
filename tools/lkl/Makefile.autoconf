@@ -40,6 +40,10 @@ define virtio_net_dpdk
   LDFLAGS +=-Wl,--whole-archive $$(DPDK_LIBS) -Wl,--no-whole-archive -lm -ldl
 endef
 
+define virtio_net_raspi
+  $(call set_autoconf_var,VIRTIO_NET_RASPI,y)
+endef
+
 define virtio_net_vde
   $(call set_autoconf_var,VIRTIO_NET_VDE,y)
   LDLIBS += $(shell pkg-config --libs vdeplug)
@@ -104,6 +108,7 @@ define rump_host
 
   # if on arm-none-eabi baremetal, skip virio-host build
   $(if $(filter $(CROSS_COMPILE),arm-none-eabi-),\
+       $(call virtio_net_raspi)
        CFLAGS += -Iinclude/arm-none-eabi,\
        CFLAGS += -pthread)
 

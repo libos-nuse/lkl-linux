@@ -112,7 +112,10 @@ int lkl_if_up(int ifindex)
 		err = lkl_sys_ioctl(sock, LKL_SIOCSIFFLAGS, (long)&ifr);
 	}
 
+// XXX: Workaround to avoid crashes in raspi
+#ifndef LKL_HOST_CONFIG_VIRTIO_NET_RASPI
 	lkl_sys_close(sock);
+#endif
 
 	return err;
 }
@@ -596,7 +599,10 @@ static int ipaddr_modify(int cmd, int flags, int ifindex, int af, void *addr,
 
 	err = rtnl_talk(fd, &req.n);
 
+// XXX: Workaround to avoid crashes in raspi
+#ifndef LKL_HOST_CONFIG_VIRTIO_NET_RASPI
 	lkl_sys_close(fd);
+#endif
 	return err;
 }
 
