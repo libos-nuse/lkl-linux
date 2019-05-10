@@ -27,13 +27,14 @@ endef
 
 define virtio_net_dpdk
   $(call set_autoconf_var,VIRTIO_NET_DPDK,y)
-  RTE_SDK ?= $(OUTPUT)/dpdk-17.02
+  RTE_SDK ?= $(OUTPUT)/dpdk-17.11
   RTE_TARGET ?= build
   DPDK_LIBS = -lrte_pmd_vmxnet3_uio -lrte_pmd_ixgbe -lrte_pmd_e1000
   DPDK_LIBS += -lrte_pmd_virtio
   DPDK_LIBS += -lrte_timer -lrte_hash -lrte_mbuf -lrte_ethdev -lrte_eal
   DPDK_LIBS += -lrte_mempool -lrte_ring -lrte_pmd_ring
   DPDK_LIBS += -lrte_kvargs -lrte_net
+  DPDK_LIBS += -lrte_bus_vdev -lrte_bus_pci -lrte_pci -lnuma
   CFLAGS += -I$$(RTE_SDK)/$$(RTE_TARGET)/include -msse4.2 -mpopcnt
   LDFLAGS +=-L$$(RTE_SDK)/$$(RTE_TARGET)/lib
   LDFLAGS +=-Wl,--whole-archive $$(DPDK_LIBS) -Wl,--no-whole-archive -lm -ldl

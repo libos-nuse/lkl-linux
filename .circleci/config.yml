@@ -93,7 +93,7 @@ do_steps: &do_steps
 jobs:
   x86_64:
    docker:
-     - image: lkldocker/circleci-x86_64:0.7
+     - image: lkldocker/circleci-x86_64:0.8
    environment:
      CROSS_COMPILE: ""
      MKARG: "dpdk=yes"
@@ -140,7 +140,7 @@ jobs:
 
   x86_64_valgrind:
    docker:
-     - image: lkldocker/circleci-x86_64:0.7
+     - image: lkldocker/circleci-x86_64:0.8
    environment:
      CROSS_COMPILE: ""
      MKARG: "dpdk=yes"
